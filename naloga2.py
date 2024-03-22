@@ -5,16 +5,17 @@ import numpy as np
 import cv2 as cv
 
 
-def konvolucija(image, kernel):
+def konvolucija_barvna(image, kernel):
     '''Izvede konvolucijo nad sliko. Brez uporabe funkcije cv.filter2D, ali katerekoli druge funkcije, ki izvaja konvolucijo.
     Funkcijo implementirajte sami z uporabo zank oz. vektorskega računanja.'''
     kernel_height, kernel_width = kernel.shape
-    #image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    # image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
     padding_height = kernel_height // 2
     padding_width = kernel_width // 2
 
-    padded_image = np.pad(image, ((padding_height, padding_height), (padding_width, padding_width), (0, 0)), mode='constant')
+    padded_image = np.pad(image, ((padding_height, padding_height), (padding_width, padding_width), (0, 0)),
+                          mode='constant')
 
     image_height, image_width, channels = image.shape
     return_image = np.zeros_like(image)
@@ -33,6 +34,31 @@ def konvolucija(image, kernel):
 
     return return_image[:image_height, :image_width]
 
+
+def konvolucija_crno_bela(image, kernel):
+    kernel_height, kernel_width = kernel.shape
+
+    padding_height = kernel_height // 2
+    padding_width = kernel_width // 2
+
+    padded_image = np.pad(image, ((padding_height, padding_width), (padding_height, padding_width)), mode='constant')
+
+    image_height, image_width = image.shape
+    return_image = np.zeros_like(image)
+
+    for i in range(image_height):
+        for j in range(image_width):
+            # Damo jedro cez sliko patch = del slike
+            image_patch = padded_image[i:i + kernel_height, j:j + kernel_width]
+
+            # Zmnozimo dobljeno matriko z jedrom
+            result = np.sum(image_patch * kernel)
+
+            # Piksel shranimo na ustrezno mesto v sliki
+            return_image[i, j] = result
+
+    return return_image[:image_height, :image_width]
+
 def filtriraj_z_gaussovim_jedrom(slika, sigma=float):
     '''Filtrira sliko z Gaussovim jedrom..'''
     kernel_size = int(2 * sigma) * 2 + 1
@@ -47,48 +73,45 @@ def filtriraj_z_gaussovim_jedrom(slika, sigma=float):
             exponent = - (((i - k - 1) ** 2 + (j - k - 1) ** 2) / (2 * sigma ** 2))
             kernel[i, j] = constant * np.exp(exponent)
 
-    return_image = konvolucija(slika, kernel)
+    return_image = konvolucija_crno_bela(slika, kernel)
     return return_image
+
 
 def filtriraj_sobel_smer(slika):
     '''Filtrira sliko z Sobelovim jedrom in označi gradiente v orignalni sliki glede na ustrezen pogoj.'''
+    sobel_x = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    sobel_y = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
 
-    pass
+    sobel_filtered = filtriraj_z_gaussovim_jedrom(slika, 1.0)
+
+    gradient_x = konvolucija_crno_bela(sobel_filtered, sobel_x)
+    gradient_y = konvolucija_crno_bela(sobel_filtered, sobel_y)
+
+    sobel = np.sqrt(np.square(gradient_x) + np.square(gradient_y))
+    sobel = np.uint8(sobel)
+
+    return sobel
+
 
 def zmanjsaj_sliko(slika, sirina, visina):
     '''Zmanjšaj sliko na velikost sirina x visina.'''
     return cv.resize(slika, (sirina, visina))
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     image = cv.imread(".utils/lenna.png")
-    kernel = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.float32)/9
-    kernel2 = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], dtype=np.float32) #Corner detection
+    kernel = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.float32) / 9
+    kernel2 = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], dtype=np.float32)  # Corner detection
 
     cv.imshow("original", image)
 
-    image = filtriraj_z_gaussovim_jedrom(image, 1.0)
+    image = np.float64(cv.cvtColor(image, cv.COLOR_BGR2GRAY))
 
-    cv.imshow("Gaussian blur", image)
+    #image = filtriraj_z_gaussovim_jedrom(image, 1.0)
+    image = filtriraj_sobel_smer(image)
+
+    cv.imshow("Filter", image)
 
     cv.waitKey(0)
     cv.destroyAllWindows()
-
-    #camera = cv.VideoCapture(1)
-    # while True:
-    #     ret, frame = camera.read()
-    #
-    #     #frame = zmanjsaj_sliko(frame, 300, 260)
-    #
-    #     kernel1 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.float32)  #Box blur
-    #     #kernel2 = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], dtype=np.float32) #Corner detection
-    #
-    #     frame = konvolucija(frame, kernel1)
-    #
-    #     cv.imshow("Camera", frame)
-    #
-    #     if cv.waitKey(1) & 0xFF == ord('q'):
-    #         break
-    #
-    # camera.release()
-    # cv.destroyAllWindows()
+    pass
