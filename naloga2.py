@@ -15,7 +15,7 @@ def konvolucija_barvna(image, kernel):
     padding_width = kernel_width // 2
 
     padded_image = np.pad(image, ((padding_height, padding_height), (padding_width, padding_width), (0, 0)),
-                          mode='constant')
+                          mode='reflect')
 
     image_height, image_width, channels = image.shape
     return_image = np.zeros_like(image)
@@ -34,14 +34,13 @@ def konvolucija_barvna(image, kernel):
 
     return return_image[:image_height, :image_width]
 
-
-def konvolucija_crno_bela(image, kernel):
+def konvolucija(image, kernel):
     kernel_height, kernel_width = kernel.shape
 
     padding_height = kernel_height // 2
     padding_width = kernel_width // 2
 
-    padded_image = np.pad(image, ((padding_height, padding_width), (padding_height, padding_width)), mode='constant')
+    padded_image = np.pad(image, ((padding_height, padding_width), (padding_height, padding_width)), mode='reflect')
 
     image_height, image_width = image.shape
     return_image = np.zeros_like(image)
@@ -73,7 +72,7 @@ def filtriraj_z_gaussovim_jedrom(slika, sigma=float):
             exponent = - (((i - k - 1) ** 2 + (j - k - 1) ** 2) / (2 * sigma ** 2))
             kernel[i, j] = constant * np.exp(exponent)
 
-    return_image = konvolucija_crno_bela(slika, kernel)
+    return_image = konvolucija(slika, kernel)
     return return_image
 
 
@@ -82,35 +81,41 @@ def filtriraj_sobel_smer(slika):
     sobel_x = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     sobel_y = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
 
-    sobel_filtered = filtriraj_z_gaussovim_jedrom(slika, 1.0)
+    sobel_filtered = filtriraj_z_gaussovim_jedrom(slika, 0.5)
 
-    gradient_x = konvolucija_crno_bela(sobel_filtered, sobel_x)
-    gradient_y = konvolucija_crno_bela(sobel_filtered, sobel_y)
+    gradient_x = konvolucija(sobel_filtered, sobel_x)
+    gradient_y = konvolucija(sobel_filtered, sobel_y)
 
     sobel = np.sqrt(np.square(gradient_x) + np.square(gradient_y))
     sobel = np.uint8(sobel)
 
     return sobel
 
+def process_sobel_image(image):
+    output = np.zeros((image.shape[0], image.shape[1], 3))
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            if image[i, j] >= 150:
+                output[i, j] = 0, 255, 0
+            else:
+                output[i, j] = 0, 0, 0
 
-def zmanjsaj_sliko(slika, sirina, visina):
-    '''Zmanjšaj sliko na velikost sirina x visina.'''
-    return cv.resize(slika, (sirina, visina))
-
+    return output
 
 if __name__ == '__main__':
     image = cv.imread(".utils/lenna.png")
-    kernel = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.float32) / 9
-    kernel2 = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], dtype=np.float32)  # Corner detection
-
     cv.imshow("original", image)
 
     image = np.float64(cv.cvtColor(image, cv.COLOR_BGR2GRAY))
 
-    #image = filtriraj_z_gaussovim_jedrom(image, 1.0)
+    #image = filtriraj_z_gaussovim_jedrom(image, 2.0)
     image = filtriraj_sobel_smer(image)
 
-    cv.imshow("Filter", image)
+    cv.imshow("Sobel", image)
+
+    image = process_sobel_image(image)
+
+    cv.imshow("Gradient", image)
 
     cv.waitKey(0)
     cv.destroyAllWindows()

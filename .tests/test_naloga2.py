@@ -59,7 +59,7 @@ def test_konvolucija():
     for n in range(5):
         i = slika_imp[:, :, n].copy()
         j = jedro.copy()
-        r = naloga2.konvolucija_crno_bela(i, j)
+        r = naloga2.konvolucija(i, j)
 
         np.testing.assert_array_equal(slika_imp[:, :, n], i, err_msg='Podana vhodna slika se je spremenila. Slike ne smete spreminjati!')
         np.testing.assert_array_equal(jedro, j, err_msg='Podano jedro se je spremenilo. Vhodnega jedra ne smete spreminjati!')
